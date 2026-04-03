@@ -32,6 +32,10 @@ dependencies = [
     # 工具库
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
+
+    # 报告导出
+    "markdown>=3.7",
+    "weasyprint>=62.0",
 ]
 
 [project.optional-dependencies]

@@ -49,3 +49,19 @@ export const getReport = (reportId) => {
 export const chatWithReport = (data) => {
   return requestWithRetry(() => service.post('/api/report/chat', data), 3, 1000)
 }
+
+/**
+ * 导出报告为 HTML 文件
+ * @param {string} reportId
+ */
+export const exportReportHtml = (reportId) => {
+  window.open(`/api/report/${reportId}/export/html`, '_blank')
+}
+
+/**
+ * 导出报告为 PDF 文件
+ * @param {string} reportId
+ */
+export const exportReportPdf = (reportId) => {
+  window.open(`/api/report/${reportId}/export/pdf`, '_blank')
+}

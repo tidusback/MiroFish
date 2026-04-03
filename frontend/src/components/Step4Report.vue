@@ -136,6 +136,26 @@
             </svg>
           </button>
 
+          <!-- Export Buttons - 在完成后显示 -->
+          <div v-if="isComplete" class="export-actions">
+            <button class="export-btn" @click="exportHtml" title="Export as HTML">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>HTML</span>
+            </button>
+            <button class="export-btn" @click="exportPdf" title="Export as PDF">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>PDF</span>
+            </button>
+          </div>
+
           <div class="workflow-divider"></div>
         </div>
 
@@ -393,7 +413,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, h, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getAgentLog, getConsoleLog } from '../api/report'
+import { getAgentLog, getConsoleLog, exportReportHtml, exportReportPdf } from '../api/report'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -411,6 +431,14 @@ const goToInteraction = () => {
   if (props.reportId) {
     router.push({ name: 'Interaction', params: { reportId: props.reportId } })
   }
+}
+
+// Export
+const exportHtml = () => {
+  if (props.reportId) exportReportHtml(props.reportId)
+}
+const exportPdf = () => {
+  if (props.reportId) exportReportPdf(props.reportId)
 }
 
 // State
@@ -3430,6 +3458,37 @@ watch(() => props.reportId, (newId) => {
 
 .next-step-btn:hover svg {
   transform: translateX(4px);
+}
+
+/* Export Actions */
+.export-actions {
+  display: flex;
+  gap: 8px;
+  width: calc(100% - 40px);
+  margin: 8px 20px 0 20px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: #F9FAFB;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+  color: #1F2937;
 }
 
 /* Workflow Empty */
