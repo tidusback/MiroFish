@@ -62,6 +62,10 @@ class Config:
     REPORT_AGENT_MAX_TOOL_CALLS = int(os.environ.get('REPORT_AGENT_MAX_TOOL_CALLS', '5'))
     REPORT_AGENT_MAX_REFLECTION_ROUNDS = int(os.environ.get('REPORT_AGENT_MAX_REFLECTION_ROUNDS', '2'))
     REPORT_AGENT_TEMPERATURE = float(os.environ.get('REPORT_AGENT_TEMPERATURE', '0.5'))
+
+    # 新闻数据源配置（可选）
+    # NewsAPI.org key – leave blank to use only RSS/URL scraping
+    NEWS_API_KEY = os.environ.get('NEWS_API_KEY', '')
     
     @classmethod
     def validate(cls):
