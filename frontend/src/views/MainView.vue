@@ -193,21 +193,30 @@ const initProject = async () => {
 
 const handleNewProject = async () => {
   const pending = getPendingUpload()
-  if (!pending.isPending || pending.files.length === 0) {
-    error.value = 'No pending files found.'
-    addLog('Error: No pending files found for new project.')
+  const hasFiles = pending.files && pending.files.length > 0
+  const hasNews = (pending.newsUrls || '').trim() || (pending.rssFeeds || '').trim()
+  const hasInsider = pending.insiderSources && pending.insiderSources.length > 0
+
+  if (!pending.isPending || (!hasFiles && !hasNews && !hasInsider)) {
+    error.value = 'No data sources found. Please go back and add files, news URLs, or insider sources.'
+    addLog('Error: No pending data sources found for new project.')
     return
   }
-  
+
   try {
     loading.value = true
     currentPhase.value = 0
-    ontologyProgress.value = { message: 'Uploading and analyzing docs...' }
-    addLog('Starting ontology generation: Uploading files...')
-    
+    ontologyProgress.value = { message: 'Uploading and analyzing sources...' }
+    addLog('Starting ontology generation: Uploading sources...')
+
     const formData = new FormData()
     pending.files.forEach(f => formData.append('files', f))
     formData.append('simulation_requirement', pending.simulationRequirement)
+
+    // Append news/reliable source fields
+    if (pending.newsUrls) formData.append('news_urls', pending.newsUrls)
+    if (pending.rssFeeds) formData.append('rss_feeds', pending.rssFeeds)
+    if (hasInsider) formData.append('insider_sources', JSON.stringify(pending.insiderSources))
     
     const res = await generateOntology(formData)
     if (res.success) {

@@ -1,8 +1,12 @@
 FROM python:3.11
 
-# 安装 Node.js （满足 >=18）及必要工具
+# 安装 Node.js 及 WeasyPrint 所需系统库
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends nodejs npm \
+  && apt-get install -y --no-install-recommends \
+    nodejs npm \
+    libpango-1.0-0 libpangoft2-1.0-0 libcairo2 \
+    libpangocairo-1.0-0 libgdk-pixbuf2.0-0 \
+    libffi-dev shared-mime-info \
   && rm -rf /var/lib/apt/lists/*
 
 # 从 uv 官方镜像复制 uv

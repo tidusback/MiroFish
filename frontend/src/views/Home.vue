@@ -126,42 +126,122 @@
         <!-- 右栏：交互控制台 -->
         <div class="right-panel">
           <div class="console-box">
-            <!-- 上传区域 -->
+            <!-- 数据源选项卡 -->
             <div class="console-section">
               <div class="console-header">
                 <span class="console-label">{{ $t('home.realitySeed') }}</span>
-                <span class="console-meta">{{ $t('home.supportedFormats') }}</span>
-              </div>
-              
-              <div 
-                class="upload-zone"
-                :class="{ 'drag-over': isDragOver, 'has-files': files.length > 0 }"
-                @dragover.prevent="handleDragOver"
-                @dragleave.prevent="handleDragLeave"
-                @drop.prevent="handleDrop"
-                @click="triggerFileInput"
-              >
-                <input
-                  ref="fileInput"
-                  type="file"
-                  multiple
-                  accept=".pdf,.md,.txt"
-                  @change="handleFileSelect"
-                  style="display: none"
-                  :disabled="loading"
-                />
-                
-                <div v-if="files.length === 0" class="upload-placeholder">
-                  <div class="upload-icon">↑</div>
-                  <div class="upload-title">{{ $t('home.dragToUpload') }}</div>
-                  <div class="upload-hint">{{ $t('home.orBrowse') }}</div>
+                <div class="source-tabs">
+                  <button
+                    class="source-tab"
+                    :class="{ active: sourceTab === 'files' }"
+                    @click="sourceTab = 'files'"
+                    :disabled="loading"
+                  >Files</button>
+                  <button
+                    class="source-tab"
+                    :class="{ active: sourceTab === 'news' }"
+                    @click="sourceTab = 'news'"
+                    :disabled="loading"
+                  >News &amp; RSS</button>
+                  <button
+                    class="source-tab"
+                    :class="{ active: sourceTab === 'insider' }"
+                    @click="sourceTab = 'insider'"
+                    :disabled="loading"
+                  >Insider Sources</button>
                 </div>
-                
-                <div v-else class="file-list">
-                  <div v-for="(file, index) in files" :key="index" class="file-item">
-                    <span class="file-icon">📄</span>
-                    <span class="file-name">{{ file.name }}</span>
-                    <button @click.stop="removeFile(index)" class="remove-btn">×</button>
+              </div>
+
+              <!-- Tab: File upload -->
+              <div v-if="sourceTab === 'files'">
+                <div
+                  class="upload-zone"
+                  :class="{ 'drag-over': isDragOver, 'has-files': files.length > 0 }"
+                  @dragover.prevent="handleDragOver"
+                  @dragleave.prevent="handleDragLeave"
+                  @drop.prevent="handleDrop"
+                  @click="triggerFileInput"
+                >
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    multiple
+                    accept=".pdf,.md,.txt"
+                    @change="handleFileSelect"
+                    style="display: none"
+                    :disabled="loading"
+                  />
+                  <div v-if="files.length === 0" class="upload-placeholder">
+                    <div class="upload-icon">↑</div>
+                    <div class="upload-title">{{ $t('home.dragToUpload') }}</div>
+                    <div class="upload-hint">{{ $t('home.orBrowse') }}</div>
+                  </div>
+                  <div v-else class="file-list">
+                    <div v-for="(file, index) in files" :key="index" class="file-item">
+                      <span class="file-icon">📄</span>
+                      <span class="file-name">{{ file.name }}</span>
+                      <button @click.stop="removeFile(index)" class="remove-btn">×</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab: News URLs and RSS feeds -->
+              <div v-if="sourceTab === 'news'" class="news-source-panel">
+                <div class="source-field">
+                  <label class="source-field-label">Article URLs <span class="source-hint">(one per line)</span></label>
+                  <textarea
+                    v-model="newsUrls"
+                    class="source-textarea"
+                    placeholder="https://reuters.com/article/...&#10;https://apnews.com/article/..."
+                    rows="4"
+                    :disabled="loading"
+                  ></textarea>
+                </div>
+                <div class="source-field">
+                  <label class="source-field-label">RSS / Atom Feeds <span class="source-hint">(one per line)</span></label>
+                  <textarea
+                    v-model="rssFeeds"
+                    class="source-textarea"
+                    placeholder="https://feeds.reuters.com/reuters/topNews&#10;https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+                    rows="3"
+                    :disabled="loading"
+                  ></textarea>
+                </div>
+                <div class="credibility-note">
+                  Sources from Reuters, AP, BBC, FT, WSJ, Bloomberg and similar outlets are automatically classified as <strong>Tier-1 Authoritative</strong>.
+                </div>
+              </div>
+
+              <!-- Tab: Insider / expert sources -->
+              <div v-if="sourceTab === 'insider'" class="news-source-panel">
+                <div class="source-field">
+                  <label class="source-field-label">Source label <span class="source-hint">(who is this from?)</span></label>
+                  <input
+                    v-model="insiderLabel"
+                    class="source-input"
+                    placeholder="e.g. Industry Analyst, Government Insider, Anonymous Expert"
+                    :disabled="loading"
+                  />
+                </div>
+                <div class="source-field">
+                  <label class="source-field-label">Content <span class="source-hint">(paste insider information here)</span></label>
+                  <textarea
+                    v-model="insiderContent"
+                    class="source-textarea"
+                    placeholder="Paste the insider information, expert analysis, or behind-the-scenes details here..."
+                    rows="5"
+                    :disabled="loading"
+                  ></textarea>
+                </div>
+                <button class="add-insider-btn" @click="addInsiderSource" :disabled="loading || !insiderContent.trim()">
+                  + Add this source
+                </button>
+                <div v-if="insiderSources.length > 0" class="insider-list">
+                  <div v-for="(src, i) in insiderSources" :key="i" class="insider-item">
+                    <span class="insider-label">{{ src.label || 'Anonymous' }}</span>
+                    <span class="insider-preview">{{ src.content.slice(0, 60) }}…</span>
+                    <button @click="insiderSources.splice(i, 1)" class="remove-btn">×</button>
                   </div>
                 </div>
               </div>
@@ -235,9 +315,31 @@ const isDragOver = ref(false)
 // 文件输入引用
 const fileInput = ref(null)
 
+// 数据源选项卡
+const sourceTab = ref('files')
+
+// 新闻/可靠来源
+const newsUrls = ref('')
+const rssFeeds = ref('')
+const insiderSources = ref([])
+const insiderLabel = ref('')
+const insiderContent = ref('')
+
+const addInsiderSource = () => {
+  const content = insiderContent.value.trim()
+  if (!content) return
+  insiderSources.value.push({ label: insiderLabel.value.trim() || 'Anonymous Insider', content })
+  insiderLabel.value = ''
+  insiderContent.value = ''
+}
+
 // 计算属性:是否可以提交
 const canSubmit = computed(() => {
-  return formData.value.simulationRequirement.trim() !== '' && files.value.length > 0
+  const hasRequirement = formData.value.simulationRequirement.trim() !== ''
+  const hasFiles = files.value.length > 0
+  const hasNews = newsUrls.value.trim() !== '' || rssFeeds.value.trim() !== ''
+  const hasInsider = insiderSources.value.length > 0
+  return hasRequirement && (hasFiles || hasNews || hasInsider)
 })
 
 // 触发文件选择
@@ -297,11 +399,17 @@ const scrollToBottom = () => {
 // 开始模拟 - 立即跳转，API调用在Process页面进行
 const startSimulation = () => {
   if (!canSubmit.value || loading.value) return
-  
-  // 存储待上传的数据
+
+  // 存储待上传的数据（包括新闻/可靠来源）
   import('../store/pendingUpload.js').then(({ setPendingUpload }) => {
-    setPendingUpload(files.value, formData.value.simulationRequirement)
-    
+    setPendingUpload(
+      files.value,
+      formData.value.simulationRequirement,
+      newsUrls.value,
+      rssFeeds.value,
+      insiderSources.value
+    )
+
     // 立即跳转到Process页面（使用特殊标识表示新建项目）
     router.push({
       name: 'Process',
@@ -949,5 +1057,157 @@ html[lang="en"] .workflow-list .step-desc {
 
 html[lang="en"] .workflow-list {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Source tabs */
+.source-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.source-tab {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.15s;
+}
+
+.source-tab.active {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+
+.source-tab:hover:not(.active):not(:disabled) {
+  border-color: #999;
+  color: #333;
+}
+
+/* News / RSS panel */
+.news-source-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.source-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.source-field-label {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: #444;
+}
+
+.source-hint {
+  color: #999;
+  font-weight: 400;
+}
+
+.source-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  resize: vertical;
+  color: #1a1a1a;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.source-textarea:focus {
+  outline: none;
+  border-color: #999;
+  background: #fff;
+}
+
+.source-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.source-input:focus {
+  outline: none;
+  border-color: #999;
+  background: #fff;
+}
+
+.credibility-note {
+  font-size: 0.7rem;
+  color: #666;
+  background: #f0f7ff;
+  border: 1px solid #cce4ff;
+  border-radius: 4px;
+  padding: 7px 10px;
+  line-height: 1.5;
+}
+
+.add-insider-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.add-insider-btn:hover:not(:disabled) {
+  background: #333;
+}
+
+.add-insider-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.insider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.insider-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: #f4f4f4;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.insider-label {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+}
+
+.insider-preview {
+  flex: 1;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -6,7 +6,8 @@ Report API路由
 import os
 import traceback
 import threading
-from flask import request, jsonify, send_file
+from flask import request, jsonify, send_file, Response
+from ..utils.export import markdown_to_html, html_to_pdf
 
 from . import report_bp
 from ..config import Config
@@ -434,6 +435,75 @@ def download_report(report_id: str):
         
     except Exception as e:
         logger.error(f"下载报告失败: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@report_bp.route('/<report_id>/export/html', methods=['GET'])
+def export_report_html(report_id: str):
+    """
+    导出报告为 HTML 格式
+
+    返回带样式的独立 HTML 文件
+    """
+    try:
+        report = ReportManager.get_report(report_id)
+
+        if not report:
+            return jsonify({
+                "success": False,
+                "error": t('api.reportNotFound', id=report_id)
+            }), 404
+
+        title = report.outline.title if report.outline else report_id
+        html_content = markdown_to_html(report.markdown_content, title)
+
+        return Response(
+            html_content,
+            mimetype='text/html',
+            headers={'Content-Disposition': f'attachment; filename="{report_id}.html"'}
+        )
+
+    except Exception as e:
+        logger.error(f"导出HTML报告失败: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@report_bp.route('/<report_id>/export/pdf', methods=['GET'])
+def export_report_pdf(report_id: str):
+    """
+    导出报告为 PDF 格式
+
+    返回 PDF 文件（由 WeasyPrint 生成）
+    """
+    try:
+        report = ReportManager.get_report(report_id)
+
+        if not report:
+            return jsonify({
+                "success": False,
+                "error": t('api.reportNotFound', id=report_id)
+            }), 404
+
+        title = report.outline.title if report.outline else report_id
+        html_content = markdown_to_html(report.markdown_content, title)
+        pdf_bytes = html_to_pdf(html_content)
+
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename="{report_id}.pdf"'}
+        )
+
+    except Exception as e:
+        logger.error(f"导出PDF报告失败: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),

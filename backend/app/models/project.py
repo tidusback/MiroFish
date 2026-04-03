@@ -35,6 +35,10 @@ class Project:
     # 文件信息
     files: List[Dict[str, str]] = field(default_factory=list)  # [{filename, path, size}]
     total_text_length: int = 0
+
+    # 外部数据源（新闻/RSS/内部消息）的来源元数据
+    sources: List[Dict[str, str]] = field(default_factory=list)
+    # [{url, title, source_name, credibility_tier, published_at, content_length}]
     
     # 本体信息（接口1生成后填充）
     ontology: Optional[Dict[str, Any]] = None
@@ -61,6 +65,7 @@ class Project:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "files": self.files,
+            "sources": self.sources,
             "total_text_length": self.total_text_length,
             "ontology": self.ontology,
             "analysis_summary": self.analysis_summary,
@@ -86,6 +91,7 @@ class Project:
             created_at=data.get('created_at', ''),
             updated_at=data.get('updated_at', ''),
             files=data.get('files', []),
+            sources=data.get('sources', []),
             total_text_length=data.get('total_text_length', 0),
             ontology=data.get('ontology'),
             analysis_summary=data.get('analysis_summary'),

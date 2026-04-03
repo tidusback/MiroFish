@@ -15,6 +15,7 @@ from ..services.graph_builder import GraphBuilderService
 from ..services.text_processor import TextProcessor
 from ..utils.file_parser import FileParser
 from ..utils.logger import get_logger
+from ..services.news_fetcher import NewsFetcher
 from ..utils.locale import t, get_locale, set_locale
 from ..models.task import TaskManager, TaskStatus
 from ..models.project import ProjectManager, ProjectStatus
@@ -154,52 +155,107 @@ def generate_ontology():
         simulation_requirement = request.form.get('simulation_requirement', '')
         project_name = request.form.get('project_name', 'Unnamed Project')
         additional_context = request.form.get('additional_context', '')
-        
+
+        # 新闻/可靠来源参数
+        # news_urls: 逗号或换行分隔的文章URL列表
+        # rss_feeds: 逗号或换行分隔的RSS订阅URL列表
+        # insider_sources: JSON字符串，格式 [{label, content}, ...]
+        import json as _json
+        news_urls_raw = request.form.get('news_urls', '')
+        rss_feeds_raw = request.form.get('rss_feeds', '')
+        insider_sources_raw = request.form.get('insider_sources', '[]')
+
+        def _split_urls(raw: str):
+            """Split a newline/comma separated string into non-empty URL list."""
+            parts = []
+            for sep in ('\n', ','):
+                raw = raw.replace(sep, '|')
+            for u in raw.split('|'):
+                u = u.strip()
+                if u and u.startswith('http'):
+                    parts.append(u)
+            return parts
+
+        news_urls = _split_urls(news_urls_raw)
+        rss_feeds = _split_urls(rss_feeds_raw)
+        try:
+            insider_entries = _json.loads(insider_sources_raw) if insider_sources_raw.strip() else []
+        except Exception:
+            insider_entries = []
+
         logger.debug(f"项目名称: {project_name}")
         logger.debug(f"模拟需求: {simulation_requirement[:100]}...")
-        
+        logger.debug(f"新闻URLs: {len(news_urls)}, RSS: {len(rss_feeds)}, 内部消息: {len(insider_entries)}")
+
         if not simulation_requirement:
             return jsonify({
                 "success": False,
                 "error": t('api.requireSimulationRequirement')
             }), 400
-        
+
         # 获取上传的文件
         uploaded_files = request.files.getlist('files')
-        if not uploaded_files or all(not f.filename for f in uploaded_files):
+        has_files = uploaded_files and any(f.filename for f in uploaded_files)
+        has_news = bool(news_urls or rss_feeds or insider_entries)
+
+        if not has_files and not has_news:
             return jsonify({
                 "success": False,
                 "error": t('api.requireFileUpload')
             }), 400
-        
+
         # 创建项目
         project = ProjectManager.create_project(name=project_name)
         project.simulation_requirement = simulation_requirement
         logger.info(f"创建项目: {project.project_id}")
-        
+
         # 保存文件并提取文本
         document_texts = []
         all_text = ""
-        
+
         for file in uploaded_files:
             if file and file.filename and allowed_file(file.filename):
                 # 保存文件到项目目录
                 file_info = ProjectManager.save_file_to_project(
-                    project.project_id, 
-                    file, 
+                    project.project_id,
+                    file,
                     file.filename
                 )
                 project.files.append({
                     "filename": file_info["original_filename"],
                     "size": file_info["size"]
                 })
-                
+
                 # 提取文本
                 text = FileParser.extract_text(file_info["path"])
                 text = TextProcessor.preprocess_text(text)
                 document_texts.append(text)
                 all_text += f"\n\n=== {file_info['original_filename']} ===\n{text}"
-        
+
+        # 获取新闻/可靠来源内容
+        if has_news:
+            logger.info(f"正在抓取新闻来源: {len(news_urls)} URLs, {len(rss_feeds)} RSS feeds, "
+                        f"{len(insider_entries)} 内部消息")
+            try:
+                articles = NewsFetcher.fetch_all(
+                    urls=news_urls,
+                    rss_feeds=rss_feeds,
+                    insider_entries=insider_entries,
+                )
+                if articles:
+                    news_text = NewsFetcher.articles_to_annotated_text(articles)
+                    news_text = TextProcessor.preprocess_text(news_text)
+                    document_texts.append(news_text)
+                    all_text += f"\n\n=== NEWS & RELIABLE SOURCES ===\n{news_text}"
+
+                    # 保存来源元数据到项目
+                    project.sources = [a.to_dict() for a in articles]
+                    logger.info(f"新闻来源抓取完成，共 {len(articles)} 篇文章，"
+                                f"{len(news_text)} 字符")
+            except Exception as news_err:
+                logger.warning(f"新闻来源抓取部分失败: {news_err}")
+                # 不中断流程，继续使用已有文本
+
         if not document_texts:
             ProjectManager.delete_project(project.project_id)
             return jsonify({
@@ -243,10 +299,11 @@ def generate_ontology():
                 "ontology": project.ontology,
                 "analysis_summary": project.analysis_summary,
                 "files": project.files,
+                "sources": project.sources,
                 "total_text_length": project.total_text_length
             }
         })
-        
+
     except Exception as e:
         return jsonify({
             "success": False,
