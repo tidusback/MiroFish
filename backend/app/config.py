@@ -86,13 +86,27 @@ class Config:
     # Get one at: https://marginalia-search.com/
     MARGINALIA_API_KEY = os.environ.get('MARGINALIA_API_KEY', '')
     
+    # Sentinel value written to .env when keys are not yet configured.
+    # Allows the server to start in search-only mode without crashing.
+    _PLACEHOLDER = "not-configured"
+
     @classmethod
     def validate(cls):
-        """验证必要配置"""
+        """验证必要配置 (returns hard errors only; placeholder values are warnings)"""
         errors = []
-        if not cls.LLM_API_KEY:
-            errors.append("LLM_API_KEY 未配置")
-        if not cls.ZEP_API_KEY:
-            errors.append("ZEP_API_KEY 未配置")
+        if not cls.LLM_API_KEY or cls.LLM_API_KEY == cls._PLACEHOLDER:
+            pass  # warn-only; simulation/graph features will fail but search works
+        if not cls.ZEP_API_KEY or cls.ZEP_API_KEY == cls._PLACEHOLDER:
+            pass  # warn-only; same reason
         return errors
+
+    @classmethod
+    def search_only_mode(cls) -> bool:
+        """True when LLM/Zep keys are absent – only the search engine is functional."""
+        return (
+            not cls.LLM_API_KEY
+            or cls.LLM_API_KEY == cls._PLACEHOLDER
+            or not cls.ZEP_API_KEY
+            or cls.ZEP_API_KEY == cls._PLACEHOLDER
+        )
 
