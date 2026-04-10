@@ -66,6 +66,25 @@ class Config:
     # 新闻数据源配置（可选）
     # NewsAPI.org key – leave blank to use only RSS/URL scraping
     NEWS_API_KEY = os.environ.get('NEWS_API_KEY', '')
+
+    # -----------------------------------------------------------------------
+    # Uncensored Meta-Search Engine – Provider API Keys (all optional)
+    # -----------------------------------------------------------------------
+    # Brave Search API key (free tier: 2,000 req/month)
+    # Get one at: https://api.search.brave.com/
+    BRAVE_SEARCH_API_KEY = os.environ.get('BRAVE_SEARCH_API_KEY', '')
+
+    # Semantic Scholar API key (optional – increases rate limits)
+    # Get one at: https://www.semanticscholar.org/product/api
+    SEMANTIC_SCHOLAR_API_KEY = os.environ.get('SEMANTIC_SCHOLAR_API_KEY', '')
+
+    # GitHub Personal Access Token (optional – increases rate limits to 5,000/hr)
+    # Create at: https://github.com/settings/tokens
+    GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+
+    # Marginalia API key (optional – enables full result set)
+    # Get one at: https://marginalia-search.com/
+    MARGINALIA_API_KEY = os.environ.get('MARGINALIA_API_KEY', '')
     
     @classmethod
     def validate(cls):
