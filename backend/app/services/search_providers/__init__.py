@@ -3,13 +3,15 @@ Uncensored Meta-Search Engine - Provider Registry
 ==================================================
 Aggregates results from diverse, ad-free, unfiltered sources:
 
-  Web:       DuckDuckGo, Brave Search, SearXNG
-  Social:    Reddit, HackerNews
-  Academic:  arXiv, Semantic Scholar
-  Archive:   Internet Archive (Wayback Machine)
-  Dark Web:  Ahmia.fi (Tor .onion index, clearnet)
-  Alt:       Marginalia (independent index), Wikipedia
-  Code:      GitHub
+  Web:           DuckDuckGo, Brave Search, SearXNG
+  Social:        Reddit, HackerNews
+  Academic:      arXiv, Semantic Scholar
+  Archive:       Internet Archive (Wayback Machine), CourtListener (US courts)
+  Dark Web:      Ahmia.fi (Tor .onion index, clearnet)
+  Alt/Indie:     Marginalia (independent index), GDELT (global news), Alt-News RSS
+  Transparency:  OpenCorporates (200M+ company records)
+  Encyclopedia:  Wikipedia
+  Code:          GitHub
 """
 
 from .base import SearchResult, BaseProvider, SourceType
@@ -24,6 +26,10 @@ from .archive_org import ArchiveOrgProvider
 from .ahmia import AhmiaProvider
 from .marginalia import MarginaliaProvider
 from .github import GitHubProvider
+from .courtlistener import CourtListenerProvider
+from .gdelt import GDELTProvider
+from .alternative_news import AlternativeNewsProvider
+from .opencorporates import OpenCorporatesProvider
 
 __all__ = [
     'SearchResult', 'BaseProvider', 'SourceType',
@@ -38,4 +44,9 @@ __all__ = [
     'AhmiaProvider',
     'MarginaliaProvider',
     'GitHubProvider',
+    'CourtListenerProvider',
+    'GDELTProvider',
+    'AlternativeNewsProvider',
+    'OpenCorporatesProvider',
 ]
+

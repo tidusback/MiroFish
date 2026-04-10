@@ -85,6 +85,13 @@ class Config:
     # Marginalia API key (optional – enables full result set)
     # Get one at: https://marginalia-search.com/
     MARGINALIA_API_KEY = os.environ.get('MARGINALIA_API_KEY', '')
+
+    # OpenCorporates API token (optional – higher rate limits for corporate search)
+    # Get one at: https://opencorporates.com/api_accounts/new
+    OPENCORPORATES_API_KEY = os.environ.get('OPENCORPORATES_API_KEY', '')
+
+    # Search result cache TTL in seconds (default 300 = 5 minutes)
+    SEARCH_CACHE_TTL = float(os.environ.get('SEARCH_CACHE_TTL', '300'))
     
     # Sentinel value written to .env when keys are not yet configured.
     # Allows the server to start in search-only mode without crashing.

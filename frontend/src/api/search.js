@@ -6,9 +6,7 @@ import axios from 'axios'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001') + '/api/search'
 
-/**
- * List all available search providers with their status.
- */
+/** List all available search providers with their status. */
 export async function getProviders() {
   const resp = await axios.get(`${BASE}/providers`)
   return resp.data
@@ -17,22 +15,35 @@ export async function getProviders() {
 /**
  * Run an uncensored meta-search.
  *
- * @param {string}   query            - Search query
- * @param {string[]} providers        - Provider IDs to use (optional)
- * @param {number}   maxPerProvider   - Max results per provider (default 10)
- * @param {number}   page             - Page number (default 1)
- * @param {string}   mode             - "default" | "deep"
+ * @param {string}        query
+ * @param {string[]|null} providers       - provider IDs (null = use server default)
+ * @param {number}        maxPerProvider
+ * @param {number}        page
+ * @param {string}        mode            - "default" | "deep"
+ * @param {string|null}   dateFrom        - YYYY-MM-DD
+ * @param {string|null}   dateTo          - YYYY-MM-DD
+ * @param {boolean}       noCache         - bypass cache
  */
-export async function search({ query, providers = null, maxPerProvider = 10, page = 1, mode = 'default' }) {
+export async function search({
+  query,
+  providers = null,
+  maxPerProvider = 10,
+  page = 1,
+  mode = 'default',
+  dateFrom = null,
+  dateTo = null,
+  noCache = false,
+}) {
   const body = {
     query,
     max_per_provider: maxPerProvider,
     page,
     mode,
+    no_cache: noCache,
   }
-  if (providers && providers.length > 0) {
-    body.providers = providers
-  }
+  if (providers && providers.length > 0) body.providers = providers
+  if (dateFrom) body.date_from = dateFrom
+  if (dateTo)   body.date_to   = dateTo
 
   const resp = await axios.post(`${BASE}/`, body, { timeout: 35000 })
   return resp.data
@@ -40,8 +51,6 @@ export async function search({ query, providers = null, maxPerProvider = 10, pag
 
 /**
  * Get autocomplete suggestions for a partial query.
- *
- * @param {string} q - Partial query
  */
 export async function suggest(q) {
   if (!q || q.length < 2) return []
@@ -51,4 +60,22 @@ export async function suggest(q) {
   } catch {
     return []
   }
+}
+
+/**
+ * Build a URL to download search results.
+ *
+ * @param {string}   query
+ * @param {string}   fmt       - "json" | "csv"
+ * @param {string[]} providers
+ * @param {string}   mode
+ * @param {string}   dateFrom
+ * @param {string}   dateTo
+ */
+export function exportUrl({ query, fmt = 'json', providers = [], mode = 'default', dateFrom = '', dateTo = '' }) {
+  const params = new URLSearchParams({ q: query, fmt, mode })
+  if (providers.length) params.set('providers', providers.join(','))
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo)   params.set('date_to',   dateTo)
+  return `${BASE}/export?${params.toString()}`
 }
