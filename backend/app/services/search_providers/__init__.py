@@ -1,15 +1,14 @@
 """
 Uncensored Meta-Search Engine - Provider Registry
 ==================================================
-Aggregates results from diverse, ad-free, unfiltered sources:
+19 diverse sources aggregated in parallel:
 
-  Web:           DuckDuckGo, Brave Search, SearXNG
-  Social:        Reddit, HackerNews
-  Academic:      arXiv, Semantic Scholar
-  Archive:       Internet Archive (Wayback Machine), CourtListener (US courts)
-  Dark Web:      Ahmia.fi (Tor .onion index, clearnet)
-  Alt/Indie:     Marginalia (independent index), GDELT (global news), Alt-News RSS
-  Transparency:  OpenCorporates (200M+ company records)
+  Web:           DuckDuckGo, Brave Search
+  Social:        Reddit, HackerNews, Mastodon (Fediverse)
+  Academic:      arXiv, Semantic Scholar, PubMed (35M+ biomedical papers)
+  Archive:       Internet Archive, CourtListener (US courts), DocumentCloud (FOIA)
+  Dark Web:      Ahmia.fi (Tor index, clearnet), Tor Search (direct, if Tor running)
+  Alt/Indie:     Marginalia, GDELT (global news), Alt-News RSS, OpenCorporates
   Encyclopedia:  Wikipedia
   Code:          GitHub
 """
@@ -30,23 +29,19 @@ from .courtlistener import CourtListenerProvider
 from .gdelt import GDELTProvider
 from .alternative_news import AlternativeNewsProvider
 from .opencorporates import OpenCorporatesProvider
+from .documentcloud import DocumentCloudProvider
+from .pubmed import PubMedProvider
+from .mastodon import MastodonProvider
+from .tor_search import TorSearchProvider
 
 __all__ = [
     'SearchResult', 'BaseProvider', 'SourceType',
-    'DuckDuckGoProvider',
-    'BraveSearchProvider',
-    'HackerNewsProvider',
-    'RedditProvider',
+    'DuckDuckGoProvider', 'BraveSearchProvider',
+    'HackerNewsProvider', 'RedditProvider', 'MastodonProvider',
     'WikipediaProvider',
-    'ArxivProvider',
-    'SemanticScholarProvider',
-    'ArchiveOrgProvider',
-    'AhmiaProvider',
-    'MarginaliaProvider',
+    'ArxivProvider', 'SemanticScholarProvider', 'PubMedProvider',
+    'ArchiveOrgProvider', 'CourtListenerProvider', 'DocumentCloudProvider',
+    'AhmiaProvider', 'TorSearchProvider',
+    'MarginaliaProvider', 'GDELTProvider', 'AlternativeNewsProvider', 'OpenCorporatesProvider',
     'GitHubProvider',
-    'CourtListenerProvider',
-    'GDELTProvider',
-    'AlternativeNewsProvider',
-    'OpenCorporatesProvider',
 ]
-

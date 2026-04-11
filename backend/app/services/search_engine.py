@@ -1,13 +1,16 @@
 """
 MiroFish Uncensored Meta-Search Engine
 =======================================
-Aggregates results from 15 diverse sources in parallel:
+Aggregates results from 19 diverse sources in parallel:
 
   Web:           DuckDuckGo (no ads, scraping), Brave Search (independent index)
-  Social:        Reddit, Hacker News
-  Academic:      arXiv (preprints), Semantic Scholar (200M+ papers)
-  Archive:       Internet Archive, CourtListener (US federal courts)
-  Dark Web:      Ahmia.fi (Tor .onion index, clearnet accessible)
+  Social:        Reddit, Hacker News, Mastodon (Fediverse, no censorship)
+  Academic:      arXiv (preprints), Semantic Scholar (200M+ papers),
+                 PubMed (35M+ biomedical papers)
+  Archive:       Internet Archive, CourtListener (US federal courts),
+                 DocumentCloud (FOIA / leaked documents)
+  Dark Web:      Ahmia.fi (Tor .onion index, clearnet),
+                 Tor Search (direct .onion access if Tor is running)
   Alternative:   Marginalia (non-commercial), GDELT (global news), Alt-News RSS,
                  OpenCorporates (corporate transparency)
   Encyclopedia:  Wikipedia
@@ -37,15 +40,19 @@ from .search_providers import (
     BaseProvider,
     BraveSearchProvider,
     CourtListenerProvider,
+    DocumentCloudProvider,
     DuckDuckGoProvider,
     GDELTProvider,
     GitHubProvider,
     HackerNewsProvider,
     MarginaliaProvider,
+    MastodonProvider,
     OpenCorporatesProvider,
+    PubMedProvider,
     RedditProvider,
     SearchResult,
     SemanticScholarProvider,
+    TorSearchProvider,
     WikipediaProvider,
 )
 
@@ -54,28 +61,33 @@ logger = logging.getLogger("mirofish.search_engine")
 # ── Provider registry ─────────────────────────────────────────────────────────
 
 _PROVIDER_REGISTRY: Dict[str, type] = {
-    "duckduckgo":      DuckDuckGoProvider,
-    "brave":           BraveSearchProvider,
-    "hackernews":      HackerNewsProvider,
-    "reddit":          RedditProvider,
-    "wikipedia":       WikipediaProvider,
-    "arxiv":           ArxivProvider,
+    "duckduckgo":       DuckDuckGoProvider,
+    "brave":            BraveSearchProvider,
+    "hackernews":       HackerNewsProvider,
+    "reddit":           RedditProvider,
+    "mastodon":         MastodonProvider,
+    "wikipedia":        WikipediaProvider,
+    "arxiv":            ArxivProvider,
     "semantic_scholar": SemanticScholarProvider,
-    "archive_org":     ArchiveOrgProvider,
-    "ahmia":           AhmiaProvider,
-    "marginalia":      MarginaliaProvider,
-    "github":          GitHubProvider,
-    "courtlistener":   CourtListenerProvider,
-    "gdelt":           GDELTProvider,
-    "alt_news":        AlternativeNewsProvider,
-    "opencorporates":  OpenCorporatesProvider,
+    "pubmed":           PubMedProvider,
+    "archive_org":      ArchiveOrgProvider,
+    "courtlistener":    CourtListenerProvider,
+    "documentcloud":    DocumentCloudProvider,
+    "ahmia":            AhmiaProvider,
+    "tor_direct":       TorSearchProvider,
+    "marginalia":       MarginaliaProvider,
+    "gdelt":            GDELTProvider,
+    "alt_news":         AlternativeNewsProvider,
+    "opencorporates":   OpenCorporatesProvider,
+    "github":           GitHubProvider,
 }
 
-# Default set: free providers, no key required, fast
+# Default set: free providers, no key required, responsive
 DEFAULT_PROVIDERS = [
     "duckduckgo",
     "hackernews",
     "reddit",
+    "mastodon",
     "wikipedia",
     "arxiv",
     "archive_org",
@@ -84,12 +96,15 @@ DEFAULT_PROVIDERS = [
     "alt_news",
 ]
 
-# Deep set: everything including dark web, courts, corporate transparency
+# Deep set: everything — dark web, courts, FOIA, medical, corporate, Tor
 DEEP_PROVIDERS = DEFAULT_PROVIDERS + [
+    "pubmed",
+    "documentcloud",
+    "courtlistener",
     "ahmia",
+    "tor_direct",
     "semantic_scholar",
     "github",
-    "courtlistener",
     "opencorporates",
 ]
 
@@ -170,6 +185,7 @@ class SearchEngine:
         github_token = getattr(config, "GITHUB_TOKEN", "") or ""
         mar_key      = getattr(config, "MARGINALIA_API_KEY", "") or ""
         oc_key       = getattr(config, "OPENCORPORATES_API_KEY", "") or ""
+        ncbi_key     = getattr(config, "NCBI_API_KEY", "") or ""
         cache_ttl    = float(getattr(config, "SEARCH_CACHE_TTL", 300))
 
         for pid, cls_ref in _PROVIDER_REGISTRY.items():
@@ -178,6 +194,8 @@ class SearchEngine:
                     instance = BraveSearchProvider(api_key=brave_key)
                 elif pid == "semantic_scholar":
                     instance = SemanticScholarProvider(api_key=ss_key)
+                elif pid == "pubmed":
+                    instance = PubMedProvider(api_key=ncbi_key)
                 elif pid == "github":
                     instance = GitHubProvider(token=github_token)
                 elif pid == "marginalia":

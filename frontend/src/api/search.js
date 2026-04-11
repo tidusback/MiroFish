@@ -63,6 +63,23 @@ export async function suggest(q) {
 }
 
 /**
+ * Send search results to the LLM for investigative analysis.
+ * Returns null + logs if LLM is not configured.
+ *
+ * @param {string} query
+ * @param {Array}  results   – from search()
+ * @param {number} maxN      – max results to analyze (default 20)
+ */
+export async function analyzeResults({ query, results, maxN = 20 }) {
+  const resp = await axios.post(
+    `${BASE}/analyze`,
+    { query, results, max_results_to_analyze: maxN },
+    { timeout: 60000 }
+  )
+  return resp.data
+}
+
+/**
  * Build a URL to download search results.
  *
  * @param {string}   query

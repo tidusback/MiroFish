@@ -90,6 +90,13 @@ class Config:
     # Get one at: https://opencorporates.com/api_accounts/new
     OPENCORPORATES_API_KEY = os.environ.get('OPENCORPORATES_API_KEY', '')
 
+    # NCBI/PubMed API key (optional – 10x rate limit for biomedical search)
+    # Get one at: https://www.ncbi.nlm.nih.gov/account/
+    NCBI_API_KEY = os.environ.get('NCBI_API_KEY', '')
+
+    # Tor SOCKS5 proxy URL for direct .onion access (default: 127.0.0.1:9050)
+    TOR_SOCKS_PROXY = os.environ.get('TOR_SOCKS_PROXY', 'socks5h://127.0.0.1:9050')
+
     # Search result cache TTL in seconds (default 300 = 5 minutes)
     SEARCH_CACHE_TTL = float(os.environ.get('SEARCH_CACHE_TTL', '300'))
     

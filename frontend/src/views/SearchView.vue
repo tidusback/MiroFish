@@ -1,5 +1,12 @@
 <template>
-  <div class="search-root" @keydown.escape="clearSuggestions">
+  <div class="search-root" @keydown.escape="clearSuggestions; showHistory = false">
+
+    <!-- Toast notifications -->
+    <transition name="toast-fade">
+      <div v-if="shareToast || feedToast" class="toast">
+        {{ feedToast ? '→ Sent to MiroFish' : '✓ Link copied' }}
+      </div>
+    </transition>
 
     <!-- ── NAV ──────────────────────────────────────────────────── -->
     <nav class="navbar">
@@ -32,14 +39,22 @@
             placeholder="Search anything…"
             autocomplete="off"
             spellcheck="false"
-            @focus="inputFocused = true"
-            @blur="inputFocused = false"
-            @input="onInputChange"
+            @focus="onInputFocus"
+            @blur="onInputBlur"
+            @input="onInputChange; showHistory = false"
             @keydown.down.prevent="moveSuggestion(1)"
             @keydown.up.prevent="moveSuggestion(-1)"
             @keydown.enter.prevent="handleEnter"
           />
           <button type="button" v-if="query" class="clear-btn" @click="clearQuery" title="Clear">✕</button>
+          <button
+            type="button"
+            v-if="searchHistory.length"
+            class="history-toggle-btn"
+            :class="{ active: showHistory }"
+            @click.prevent="showHistory = !showHistory"
+            title="Recent searches"
+          >◷</button>
           <button type="submit" class="search-btn" :disabled="searching || !query.trim()">
             <span v-if="!searching">SEARCH</span>
             <span v-else class="spin">◌</span>
@@ -55,6 +70,24 @@
             @mousedown.prevent="acceptSuggestion(s)"
           >{{ s }}</li>
         </ul>
+
+        <!-- Search history dropdown -->
+        <div v-if="showHistory && searchHistory.length && !suggestions.length" class="history-dropdown">
+          <div class="history-header">
+            <span>Recent searches</span>
+            <button class="history-clear-btn" @mousedown.prevent="clearHistory">Clear all</button>
+          </div>
+          <ul class="history-list">
+            <li v-for="(h, i) in searchHistory" :key="h.ts" class="history-item">
+              <button class="history-query" @mousedown.prevent="runFromHistory(h.query)">
+                <span class="history-icon">◷</span>
+                <span class="history-text">{{ h.query }}</span>
+                <span class="history-time">{{ formatHistoryTs(h.ts) }}</span>
+              </button>
+              <button class="history-remove" @mousedown.prevent="removeFromHistory(i)" title="Remove">✕</button>
+            </li>
+          </ul>
+        </div>
       </form>
 
       <!-- Row: deep mode + date range -->
@@ -85,6 +118,12 @@
           />
           <button v-if="dateFrom || dateTo" class="clear-dates" @click="dateFrom = dateTo = ''" title="Clear dates">✕</button>
         </div>
+
+        <label class="mode-toggle">
+          <input type="checkbox" v-model="compactMode" />
+          <span class="toggle-track"><span class="toggle-thumb" /></span>
+          <span class="mode-label">Compact</span>
+        </label>
       </div>
     </section>
 
@@ -134,6 +173,24 @@
           <div class="stats-right">
             <a :href="exportHref('json')" class="export-btn" download>↓ JSON</a>
             <a :href="exportHref('csv')"  class="export-btn" download>↓ CSV</a>
+            <button
+              class="export-btn action-btn"
+              :class="{ 'action-btn--active': showAnalysis }"
+              @click="runAnalysis"
+              :disabled="analyzing"
+              title="AI investigative analysis"
+            >{{ analyzing ? '◌' : 'AI' }}</button>
+            <button
+              class="export-btn action-btn action-btn--feed"
+              @click="feedToMiroFish"
+              title="Send results to MiroFish for simulation"
+            >→ MiroFish</button>
+            <button
+              class="export-btn action-btn"
+              :class="{ 'action-btn--copied': shareToast }"
+              @click="shareUrl"
+              title="Copy shareable link"
+            >{{ shareToast ? '✓ Copied' : '⎘ Share' }}</button>
           </div>
         </template>
         <template v-else>
@@ -154,6 +211,53 @@
         </button>
       </div>
 
+      <!-- AI Analysis Panel -->
+      <transition name="slide-down">
+        <div v-if="showAnalysis" class="analysis-panel">
+          <div class="analysis-header">
+            <span class="analysis-title">AI Investigative Analysis</span>
+            <button class="analysis-close" @click="showAnalysis = false">✕</button>
+          </div>
+          <div v-if="analyzing" class="analysis-loading">
+            <span class="spin">◌</span> Analysing {{ results.length }} results across all sources…
+          </div>
+          <div v-else-if="analysisError" class="analysis-error">{{ analysisError }}</div>
+          <div v-else-if="analysis" class="analysis-body">
+            <div class="analysis-section" v-if="analysis.summary">
+              <div class="analysis-label">SUMMARY</div>
+              <p class="analysis-text">{{ analysis.summary }}</p>
+            </div>
+            <div class="analysis-section" v-if="analysis.key_findings?.length">
+              <div class="analysis-label">KEY FINDINGS</div>
+              <ul class="analysis-list">
+                <li v-for="f in analysis.key_findings" :key="f">{{ f }}</li>
+              </ul>
+            </div>
+            <div class="analysis-section" v-if="analysis.what_google_hides">
+              <div class="analysis-label">WHAT MAINSTREAM SEARCH BURIES</div>
+              <p class="analysis-text analysis-text--highlight">{{ analysis.what_google_hides }}</p>
+            </div>
+            <div class="analysis-section" v-if="analysis.further_research?.length">
+              <div class="analysis-label">DIG DEEPER</div>
+              <div class="further-tags">
+                <button
+                  v-for="q in analysis.further_research"
+                  :key="q"
+                  class="further-tag"
+                  @click="runFromHistory(q)"
+                >{{ q }}</button>
+              </div>
+            </div>
+            <div class="analysis-section" v-if="analysis.warning_flags?.length">
+              <div class="analysis-label">WARNING FLAGS</div>
+              <ul class="analysis-list analysis-list--warn">
+                <li v-for="w in analysis.warning_flags" :key="w">⚠ {{ w }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </transition>
+
       <!-- Skeleton loader -->
       <div v-if="searching" class="skeleton-list">
         <div v-for="i in 8" :key="i" class="skeleton-card" />
@@ -165,7 +269,7 @@
           v-for="(r, idx) in filteredResults"
           :key="r.url + idx"
           class="result-card"
-          :class="`result-card--${r.source_type}`"
+          :class="[`result-card--${r.source_type}`, { 'result-card--compact': compactMode }]"
         >
           <!-- Source meta row -->
           <div class="result-meta">
@@ -257,7 +361,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { getProviders, search as apiSearch, suggest as apiSuggest, exportUrl } from '../api/search'
+import { useRouter } from 'vue-router'
+import { getProviders, search as apiSearch, suggest as apiSuggest, exportUrl, analyzeResults } from '../api/search'
+import { setPendingUpload } from '../store/pendingUpload'
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -285,6 +391,20 @@ const selectedProviders    = ref([])
 
 const inputRef = ref(null)
 
+const router      = useRouter()
+const compactMode = ref(false)
+const shareToast  = ref(false)
+const feedToast   = ref(false)
+
+const HISTORY_KEY   = 'mf_search_history'
+const searchHistory = ref([])
+const showHistory   = ref(false)
+
+const analyzing     = ref(false)
+const analysis      = ref(null)
+const showAnalysis  = ref(false)
+const analysisError = ref('')
+
 // ── Provider loading ──────────────────────────────────────────────────────────
 
 onMounted(async () => {
@@ -296,6 +416,8 @@ onMounted(async () => {
   } catch (e) {
     console.warn('Could not load providers:', e)
   }
+  searchHistory.value = _loadHistory()
+  compactMode.value   = localStorage.getItem('mf_compact') === '1'
   inputRef.value?.focus()
 })
 
@@ -308,6 +430,8 @@ function onKeyDown(e) {
 }
 onMounted(() => window.addEventListener('keydown', onKeyDown))
 onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
+
+watch(compactMode, v => localStorage.setItem('mf_compact', v ? '1' : '0'))
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -349,6 +473,10 @@ async function runSearch(resetPage = true) {
   if (resetPage) {
     activeTab.value = 'all'
     currentPage.value = 1
+    showHistory.value = false
+    saveToHistory(q)
+    analysis.value = null
+    showAnalysis.value = false
   }
 
   try {
@@ -490,6 +618,110 @@ function formatDate(dateStr) {
     if (isNaN(d)) return dateStr.slice(0, 10)
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   } catch { return dateStr.slice(0, 10) }
+}
+
+// ── Search history ────────────────────────────────────────────────────────────
+
+function _loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+}
+
+function saveToHistory(q) {
+  const list = _loadHistory().filter(h => h.query !== q)
+  list.unshift({ query: q, ts: Date.now() })
+  const trimmed = list.slice(0, 20)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed))
+  searchHistory.value = trimmed
+}
+
+function removeFromHistory(idx) {
+  searchHistory.value.splice(idx, 1)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(searchHistory.value))
+}
+
+function clearHistory() {
+  searchHistory.value = []
+  localStorage.removeItem(HISTORY_KEY)
+  showHistory.value = false
+}
+
+function runFromHistory(q) {
+  query.value = q
+  showHistory.value = false
+  runSearch()
+}
+
+function formatHistoryTs(ts) {
+  const diff = Date.now() - ts
+  if (diff < 60000)   return 'just now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function onInputFocus() {
+  inputFocused.value = true
+  if (!query.value && searchHistory.value.length) showHistory.value = true
+}
+
+function onInputBlur() {
+  inputFocused.value = false
+  setTimeout(() => { showHistory.value = false }, 200)
+}
+
+// ── Share URL ─────────────────────────────────────────────────────────────────
+
+async function shareUrl() {
+  const params = new URLSearchParams({ q: query.value })
+  if (deepMode.value) params.set('deep', '1')
+  if (dateFrom.value) params.set('from', dateFrom.value)
+  if (dateTo.value)   params.set('to', dateTo.value)
+  const url = `${window.location.origin}${window.location.pathname}?${params}`
+  try {
+    await navigator.clipboard.writeText(url)
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = url; document.body.appendChild(ta); ta.select()
+    document.execCommand('copy'); document.body.removeChild(ta)
+  }
+  shareToast.value = true
+  setTimeout(() => { shareToast.value = false }, 1800)
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────────
+
+async function runAnalysis() {
+  if (analyzing.value || !results.value.length) return
+  showAnalysis.value = true
+  analyzing.value    = true
+  analysisError.value = ''
+  analysis.value      = null
+  try {
+    const data = await analyzeResults({ query: query.value, results: results.value, maxN: 20 })
+    if (data.error) { analysisError.value = data.hint ? `${data.error} — ${data.hint}` : data.error }
+    else            { analysis.value = data }
+  } catch (err) {
+    analysisError.value = 'Analysis failed. Check that LLM_API_KEY is configured in .env.'
+  } finally {
+    analyzing.value = false
+  }
+}
+
+// ── Feed to MiroFish ──────────────────────────────────────────────────────────
+
+function feedToMiroFish() {
+  const top = results.value.slice(0, 30)
+  const newsUrls = top.map(r => r.url).join('\n')
+  const insiderSources = top.map(r => ({
+    label: `[${(r.source_type || 'WEB').toUpperCase()}] ${r.source}: ${(r.title || r.url).slice(0, 100)}`,
+    content: `URL: ${r.url}\n${r.snippet || ''}`.trim(),
+  }))
+  setPendingUpload([], `Deep Search Results: ${query.value}`, newsUrls, '', insiderSources)
+  feedToast.value = true
+  setTimeout(() => {
+    feedToast.value = false
+    router.push('/')
+  }, 900)
 }
 </script>
 
@@ -824,6 +1056,135 @@ kbd {
 .search-footer a { color: #444; text-decoration: none; }
 .search-footer a:hover { color: #000; }
 .sep { color: #ddd; }
+
+/* ── History toggle button ────────────────────────────────────────────── */
+.history-toggle-btn {
+  background: none; border: none; padding: 0 10px;
+  cursor: pointer; color: #bbb; font-size: 1.1rem; line-height: 1;
+  transition: color .15s;
+}
+.history-toggle-btn:hover,
+.history-toggle-btn.active { color: #000; }
+
+/* ── History dropdown ─────────────────────────────────────────────────── */
+.history-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: #fff; border: 2px solid #000; border-top: none;
+  z-index: 100;
+}
+.history-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 14px; border-bottom: 1px solid #eee;
+  font-size: .62rem; font-weight: 700; letter-spacing: .08em; color: #999;
+}
+.history-clear-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: .62rem; color: #cc3300; font-family: inherit;
+  font-weight: 700; letter-spacing: .05em; padding: 0;
+}
+.history-clear-btn:hover { text-decoration: underline; }
+.history-list { list-style: none; margin: 0; padding: 0; }
+.history-item {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #f5f5f5;
+}
+.history-item:last-child { border-bottom: none; }
+.history-query {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: none; border: none;
+  cursor: pointer; font-family: inherit; font-size: .84rem;
+  color: #000; text-align: left;
+}
+.history-query:hover { background: #f8f8f8; }
+.history-icon { color: #bbb; font-size: .9rem; flex-shrink: 0; }
+.history-text { flex: 1; }
+.history-time { font-size: .65rem; color: #aaa; flex-shrink: 0; margin-left: 6px; }
+.history-remove {
+  background: none; border: none; cursor: pointer;
+  color: #ccc; padding: 8px 12px; font-size: .75rem;
+}
+.history-remove:hover { color: #cc3300; }
+
+/* ── Action buttons ───────────────────────────────────────────────────── */
+.action-btn { cursor: pointer; background: #fff; }
+.action-btn--active { background: #000 !important; color: #fff !important; }
+.action-btn--feed   { border-color: #ff6600 !important; color: #ff6600; }
+.action-btn--feed:hover { background: #ff6600 !important; color: #fff !important; }
+.action-btn--copied { background: #006600 !important; color: #fff !important; border-color: #006600 !important; }
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: #000; color: #fff;
+  padding: 9px 22px; font-size: .78rem; font-weight: 700;
+  letter-spacing: .08em; z-index: 9999;
+  pointer-events: none;
+}
+.toast-fade-enter-active, .toast-fade-leave-active { transition: opacity .25s, transform .25s; }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateX(-50%) translateY(12px); }
+
+/* ── AI Analysis panel ────────────────────────────────────────────────── */
+.analysis-panel {
+  border: 2px solid #000; margin-bottom: 20px;
+  background: #fafafa;
+}
+.analysis-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: #000; color: #fff;
+}
+.analysis-title { font-size: .72rem; font-weight: 700; letter-spacing: .12em; }
+.analysis-close {
+  background: none; border: none; color: #fff; cursor: pointer;
+  font-size: .9rem; padding: 0; line-height: 1;
+}
+.analysis-close:hover { opacity: .7; }
+.analysis-loading {
+  padding: 20px 16px; font-size: .82rem; color: #666;
+  display: flex; align-items: center; gap: 8px;
+}
+.analysis-error {
+  padding: 14px 16px; font-size: .78rem; color: #cc3300;
+  background: #fff5f5; border-top: 1px solid #ffcccc;
+}
+.analysis-body { padding: 4px 0; }
+.analysis-section {
+  padding: 12px 16px; border-bottom: 1px solid #eee;
+}
+.analysis-section:last-child { border-bottom: none; }
+.analysis-label {
+  font-size: .58rem; font-weight: 700; letter-spacing: .12em;
+  color: #888; margin-bottom: 6px;
+}
+.analysis-text { font-size: .84rem; color: #222; line-height: 1.55; margin: 0; }
+.analysis-text--highlight {
+  background: #fffbe6; border-left: 3px solid #ff6600;
+  padding: 8px 12px;
+}
+.analysis-list {
+  margin: 0; padding-left: 18px;
+  font-size: .82rem; color: #333; line-height: 1.7;
+}
+.analysis-list--warn { color: #883300; }
+.further-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.further-tag {
+  font-family: inherit; font-size: .72rem; font-weight: 600;
+  padding: 4px 10px; border: 1px solid #ccc; background: #fff;
+  cursor: pointer; color: #333; transition: all .15s;
+}
+.further-tag:hover { border-color: #000; background: #000; color: #fff; }
+
+/* Slide transition for analysis panel */
+.slide-down-enter-active { transition: opacity .25s; }
+.slide-down-leave-active { transition: opacity .2s; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; }
+
+/* ── Compact result card ──────────────────────────────────────────────── */
+.result-card--compact { padding: 8px 0; }
+.result-card--compact .result-snippet {
+  -webkit-line-clamp: 2;
+  margin-bottom: 4px;
+}
+.result-card--compact .result-actions { margin-top: 2px; }
 
 /* ── Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 640px) {
