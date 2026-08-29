@@ -17,7 +17,8 @@ from flask import request, jsonify
 from . import search_bp
 from ..config import Config
 from ..utils.logger import get_logger
-from ..services.search_service import SearchAggregator, NewsFetcher
+from ..services.search_service import SearchAggregator
+from ..services.news_fetcher import NewsFetcher
 
 logger = get_logger("mirofish.api.search")
 
@@ -182,7 +183,6 @@ def fetch_article():
         if not url:
             return jsonify({"success": False, "error": "Field 'url' is required"}), 400
 
-        from ..services.news_fetcher import NewsFetcher
         article = NewsFetcher.fetch_url(url)
 
         return jsonify({"success": True, "data": article.to_dict()})

@@ -92,7 +92,7 @@ def _safe_get(session, url, *, params=None, timeout=12, **kwargs):
         return r
     except Exception as exc:
         logger.warning(f"GET {url} failed: {exc}")
-        return None
+        raise RuntimeError(f"GET {url} failed: {exc}") from exc
 
 
 def _safe_post(session, url, *, data=None, timeout=12, **kwargs):
@@ -102,7 +102,7 @@ def _safe_post(session, url, *, data=None, timeout=12, **kwargs):
         return r
     except Exception as exc:
         logger.warning(f"POST {url} failed: {exc}")
-        return None
+        raise RuntimeError(f"POST {url} failed: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -479,9 +479,16 @@ class SearchAggregator:
         to_run = {k: v for k, v in available.items()
                   if engines is None or k in engines}
 
+        unknown_engines = [] if engines is None else [
+            name for name in engines if name not in available
+        ]
+
         all_results: List[SearchResult] = []
         engines_used = []
-        engines_failed = []
+        engines_failed = [
+            {"engine": name, "error": "Unknown or unavailable search engine"}
+            for name in unknown_engines
+        ]
         seen_urls = set()
 
         def run_engine(name, fn):
@@ -493,18 +500,19 @@ class SearchAggregator:
                 logger.warning(f"Engine '{name}' failed: {exc}")
                 return name, [], str(exc)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(to_run)) as pool:
-            futures = {pool.submit(run_engine, name, fn): name for name, fn in to_run.items()}
-            for future in concurrent.futures.as_completed(futures):
-                name, results, err = future.result()
-                if err:
-                    engines_failed.append({"engine": name, "error": err})
-                else:
-                    engines_used.append(name)
-                for r in results:
-                    if r.url and r.url not in seen_urls:
-                        seen_urls.add(r.url)
-                        all_results.append(r)
+        if to_run:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(to_run)) as pool:
+                futures = {pool.submit(run_engine, name, fn): name for name, fn in to_run.items()}
+                for future in concurrent.futures.as_completed(futures):
+                    name, results, err = future.result()
+                    if err:
+                        engines_failed.append({"engine": name, "error": err})
+                    else:
+                        engines_used.append(name)
+                    for r in results:
+                        if r.url and r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            all_results.append(r)
 
         return {
             "results": [r.to_dict() for r in all_results],

@@ -110,8 +110,8 @@
       <!-- Result cards -->
       <div class="result-list">
         <div
-          v-for="(res, idx) in filteredResults"
-          :key="idx"
+          v-for="res in filteredResults"
+          :key="res.url"
           class="result-card"
         >
           <div class="result-meta">
@@ -150,18 +150,18 @@
             </a>
             <button
               class="action-link fetch-link"
-              @click="fetchArticle(res, idx)"
-              :disabled="fetchingIdx === idx"
+              @click="fetchArticle(res)"
+              :disabled="fetchingUrl === res.url"
               title="Fetch full article text"
             >
-              {{ fetchingIdx === idx ? 'Fetching…' : 'Full Text ⤓' }}
+              {{ fetchingUrl === res.url ? 'Fetching…' : 'Full Text ⤓' }}
             </button>
           </div>
 
           <!-- Expanded full text -->
-          <div v-if="expandedArticles[idx]" class="article-body">
+          <div v-if="expandedArticles[res.url]" class="article-body">
             <div class="article-body-header">Full extracted text:</div>
-            <pre class="article-text">{{ expandedArticles[idx] }}</pre>
+            <pre class="article-text">{{ expandedArticles[res.url] }}</pre>
           </div>
         </div>
 
@@ -210,7 +210,7 @@ const allEngines = ref([])
 const selectedEngines = ref([])
 const activeFilter = ref('all')
 const expandedArticles = ref({})
-const fetchingIdx = ref(null)
+const fetchingUrl = ref(null)
 
 onMounted(async () => {
   try {
@@ -266,15 +266,15 @@ async function doSearch(q, deep) {
   }
 }
 
-async function fetchArticle(res, idx) {
-  fetchingIdx.value = idx
+async function fetchArticle(res) {
+  fetchingUrl.value = res.url
   try {
     const data = await fetchArticleApi(res.url)
-    expandedArticles.value[idx] = data.content || '(no content extracted)'
+    expandedArticles.value[res.url] = data.content || '(no content extracted)'
   } catch {
-    expandedArticles.value[idx] = '(fetch failed)'
+    expandedArticles.value[res.url] = '(fetch failed)'
   } finally {
-    fetchingIdx.value = null
+    fetchingUrl.value = null
   }
 }
 
