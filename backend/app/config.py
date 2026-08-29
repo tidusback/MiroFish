@@ -66,6 +66,13 @@ class Config:
     # 新闻数据源配置（可选）
     # NewsAPI.org key – leave blank to use only RSS/URL scraping
     NEWS_API_KEY = os.environ.get('NEWS_API_KEY', '')
+
+    # ===== 搜索引擎配置（可选）=====
+    # Brave Search API key – independent index, less filtered results
+    # Get a free key at: https://api.search.brave.com/
+    BRAVE_API_KEY = os.environ.get('BRAVE_API_KEY', '')
+    # SearXNG self-hosted instance URL (e.g. https://searx.example.com)
+    SEARXNG_URL = os.environ.get('SEARXNG_URL', '')
     
     @classmethod
     def validate(cls):

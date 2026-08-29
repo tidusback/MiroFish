@@ -137,6 +137,7 @@ class SourceArticle:
         return {
             "url": self.url,
             "title": self.title,
+            "content": self.content,
             "source_name": self.source_name,
             "credibility_tier": self.credibility_tier,
             "published_at": self.published_at,

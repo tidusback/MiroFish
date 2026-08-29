@@ -5,6 +5,9 @@
       <div class="nav-brand">MIROFISH</div>
       <div class="nav-links">
         <LanguageSwitcher />
+        <router-link to="/search" class="search-nav-link">
+          Open Search <span class="arrow">⌕</span>
+        </router-link>
         <a href="https://github.com/666ghj/MiroFish" target="_blank" class="github-link">
           {{ $t('nav.visitGithub') }} <span class="arrow">↗</span>
         </a>
@@ -466,6 +469,26 @@ const startSimulation = () => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.search-nav-link {
+  color: var(--orange);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--orange);
+  padding: 4px 12px;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.search-nav-link:hover {
+  background: var(--orange);
+  color: var(--white);
 }
 
 .github-link {
